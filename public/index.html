@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StagePulse | Consent-First Bio-Adaptive Teleprompter &amp; Living Auditorium</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
+
 <body class="keylight-normal">
   <!-- Dynamic Optical Key-Light Bezel (adapts to ValidationCode kTooDark / kTooBright / kLightingTooUneven) -->
   <div id="keylight-ring" class="keylight-ring" aria-hidden="true"></div>
@@ -18,7 +22,8 @@
     <div class="consent-card">
       <div class="consent-header">
         <div class="consent-brand-row">
-          <img src="/assets/stagepulse-emblem.png" class="brand-emblem-lg" alt="StagePulse Emblem" onerror="this.style.display='none'" />
+          <img src="/assets/stagepulse-emblem.png" class="brand-emblem-lg" alt="StagePulse Emblem"
+            onerror="this.style.display='none'" />
           <div>
             <div class="brand-badge">
               <span class="pulse-dot"></span>
@@ -29,7 +34,8 @@
         </div>
         <p class="consent-lead">
           StagePulse is a bio-adaptive teleprompter, vocal presence studio, and reactive auditorium.
-          Before any camera or video stream initializes, choose exactly how your optical and physiological signals are handled.
+          Before any camera or video stream initializes, choose exactly how your optical and physiological signals are
+          handled.
         </p>
       </div>
 
@@ -56,7 +62,8 @@
               <span class="pill pill-emerald">Default ON</span>
             </div>
             <p>
-              Suppresses raw RGB camera frames (<code>videoOutput</code>) from the UI and renders only a normalized 52-point geometric wireframe mesh. Zero video frames are ever written to disk.
+              Suppresses raw RGB camera frames (<code>videoOutput</code>) from the UI and renders only a normalized
+              52-point geometric wireframe mesh. Zero video frames are ever written to disk.
             </p>
           </div>
         </label>
@@ -69,7 +76,9 @@
               <span class="pill pill-amber">Default OFF (Opt-Out)</span>
             </div>
             <p>
-              When unchecked, StagePulse passes <code>enableTelemetry: false</code> to <code>new SmartSpectraSDK()</code> so aggregate post-session telemetry is not transmitted when the session stops.
+              When unchecked, StagePulse passes <code>enableTelemetry: false</code> to
+              <code>new SmartSpectraSDK()</code> so aggregate post-session telemetry is not transmitted when the session
+              stops.
             </p>
           </div>
         </label>
@@ -82,7 +91,8 @@
               <span class="pill pill-cyan">Explicit Opt-In</span>
             </div>
             <p>
-              Allows on-demand calls to <code>sdk.requestInsight({ context })</code> to generate natural-language stage coaching from your accumulated rehearsal metrics.
+              Allows on-demand calls to <code>sdk.requestInsight({ context })</code> to generate natural-language stage
+              coaching from your accumulated rehearsal metrics.
             </p>
           </div>
         </label>
@@ -107,7 +117,9 @@
 
       <div class="medical-disclaimer">
         <strong>Ergonomic Rehearsal Notice (Non-Medical):</strong>
-        StagePulse is a communication, vocal pacing, and stagecraft training instrument. Physiological metrics (pulse, respiratory trace, HRV, and EDA) are used strictly for ergonomic feedback and reactive stage visualization, never for medical diagnosis, clinical monitoring, or treatment.
+        StagePulse is a communication, vocal pacing, and stagecraft training instrument. Physiological metrics (pulse,
+        respiratory trace, HRV, and EDA) are used strictly for ergonomic feedback and reactive stage visualization,
+        never for medical diagnosis, clinical monitoring, or treatment.
       </div>
 
       <div class="consent-actions">
@@ -129,7 +141,8 @@
         <h2 id="privacy-title">Cryptographic Ring-Buffer &amp; Privacy Audit Log</h2>
         <p class="consent-lead">
           All biometric samples live inside a fixed 4,096-slot <code>Float64Array</code> (32,768 bytes) in Node.js RAM.
-          Triggering a cryptographic wipe overwrites every byte with CSPRNG noise via <code>crypto.randomFillSync()</code> before zeroing.
+          Triggering a cryptographic wipe overwrites every byte with CSPRNG noise via
+          <code>crypto.randomFillSync()</code> before zeroing.
         </p>
       </div>
 
@@ -185,7 +198,8 @@
         <button id="btn-stop-session" class="btn btn-sm btn-ghost">
           Pause / Stop
         </button>
-        <button id="btn-open-privacy" class="btn btn-sm btn-danger-outline" title="Inspect Volatile Buffer &amp; Cryptographic Wipe">
+        <button id="btn-open-privacy" class="btn btn-sm btn-danger-outline"
+          title="Inspect Volatile Buffer &amp; Cryptographic Wipe">
           32KB Wipe Vault
         </button>
       </div>
@@ -385,7 +399,8 @@
           </div>
 
           <p class="model-card-note" id="multiplexer-explanation">
-            Per Presage Breathing Model Card: respiratory waveforms are gated during active speech (<code>face.talking = true</code>) and unlocked during pauses to measure diaphragmatic refill.
+            Per Presage Breathing Model Card: respiratory waveforms are gated during active speech
+            (<code>face.talking = true</code>) and unlocked during pauses to measure diaphragmatic refill.
           </p>
 
           <div class="bellows-canvas-wrap">
@@ -435,7 +450,8 @@
             </div>
             <div class="vital-box">
               <span class="vital-label">EDA DRIFT (<code>eda.trace</code>)</span>
-              <div class="vital-number"><strong id="stat-eda-val">--</strong> <small id="stat-eda-label">steady</small></div>
+              <div class="vital-number"><strong id="stat-eda-val">--</strong> <small id="stat-eda-label">steady</small>
+              </div>
             </div>
           </div>
 
@@ -468,16 +484,15 @@
           </div>
 
           <div class="director-context-row">
-            <input
-              type="text"
-              id="input-director-context"
-              placeholder="Optional director prompt (e.g. Check my vocal cadence and breathing recovery)"
-            />
+            <input type="text" id="input-director-context"
+              placeholder="Optional director prompt (e.g. Check my vocal cadence and breathing recovery)" />
           </div>
 
           <div id="director-notes-list" class="director-notes-list">
             <div class="director-empty">
-              Click <strong>Request Director Note</strong> to invoke <code>sdk.requestInsight({ context })</code> and decode the binary <code>presage.smartspectra.Insight</code> protobuf message (coupled with live StagePulse telemetry analysis).
+              Click <strong>Request Director Note</strong> to invoke <code>sdk.requestInsight({ context })</code> and
+              decode the binary <code>presage.smartspectra.Insight</code> protobuf message (coupled with live StagePulse
+              telemetry analysis).
             </div>
           </div>
         </div>
@@ -487,4 +502,5 @@
 
   <script type="module" src="/app.js"></script>
 </body>
+
 </html>
