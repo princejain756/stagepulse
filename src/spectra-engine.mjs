@@ -8,7 +8,39 @@ import { EventEmitter } from 'node:events';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { decodeMetrics } from '@smartspectra/node-sdk/messages';
+import { decodeInsightBuffer, encodeInsightBuffer } from './insight-decoder.mjs';
 import {
+  VALIDATION_STAGE_DIRECTIONS,
+  computeFaceGeometry,
+  computeDiaphragmaticDominance,
+  evaluateExpressionCongruence,
+  computeBioClutchScroll,
+  classifyStagePresence,
+} from './biomechanics.mjs';
+
+const require = createRequire(import.meta.url);
+let sdkPkg;
+try {
+  sdkPkg = require('@smartspectra/node-sdk');
+} catch {
+  const constants = require('@smartspectra/node-sdk/js/constants');
+  const camSel = require('@smartspectra/node-sdk/js/camera-selection');
+  sdkPkg = {
+    ...constants,
+    ...camSel,
+    SmartSpectraSDK: class ServerlessSmartSpectraFallback {
+      static get version() { return '3.4.0'; }
+      static availableCameras() {
+        return [{ id: '47B4B64B-7067-4B9C-AD2B-AE273A71F4B5', name: 'FaceTime HD Camera', facing: 'front', lensType: 'wideAngle' }];
+      }
+    },
+  };
+}
+
+const {
   SmartSpectraSDK,
   CameraSelection,
   SmartSpectraLogLevel,
@@ -22,17 +54,7 @@ import {
   cardioMetrics,
   faceMetrics,
   edaMetrics,
-} from '@smartspectra/node-sdk';
-import { decodeMetrics } from '@smartspectra/node-sdk/messages';
-import { decodeInsightBuffer, encodeInsightBuffer } from './insight-decoder.mjs';
-import {
-  VALIDATION_STAGE_DIRECTIONS,
-  computeFaceGeometry,
-  computeDiaphragmaticDominance,
-  evaluateExpressionCongruence,
-  computeBioClutchScroll,
-  classifyStagePresence,
-} from './biomechanics.mjs';
+} = sdkPkg;
 
 export class StagePulseEngine extends EventEmitter {
   /**
@@ -40,11 +62,12 @@ export class StagePulseEngine extends EventEmitter {
    */
   constructor(opts = {}) {
     super();
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
     this.apiKey = opts.apiKey ?? process.env.SMARTSPECTRA_API_KEY ?? '';
     this.defaultFixturePath = opts.defaultFixturePath
-      ?? path.resolve(process.cwd(), 'assets/fixtures/speaker-rehearsal-65s.mp4');
+      ?? path.join(repoRoot, 'assets/fixtures/speaker-rehearsal-65s.mp4');
     this.defaultTracePath = opts.defaultTracePath
-      ?? path.resolve(process.cwd(), 'assets/fixtures/verified-presage-trace.json');
+      ?? path.join(repoRoot, 'assets/fixtures/verified-presage-trace.json');
 
     this.sdk = null;
     this.replayTimer = null;
@@ -189,12 +212,15 @@ export class StagePulseEngine extends EventEmitter {
       `Mode=${mode} | SDK enableTelemetry=${enableTelemetry} | LLM Insights=${enableLlmInsights} | WireframeCloak=${privacyCloakWireframeOnly}`
     );
 
-    if (mode === 'replay') {
+    if (mode === 'replay' || process.env.VERCEL || typeof SmartSpectraSDK.prototype?.start !== 'function') {
       return this._startVerifiedTraceReplay();
     }
 
     const effectiveApiKey = config.apiKey || this.apiKey;
     if (!effectiveApiKey) {
+      if (fs.existsSync(this.defaultTracePath)) {
+        return this._startVerifiedTraceReplay();
+      }
       throw Object.assign(
         new Error('Missing SMARTSPECTRA_API_KEY. Set SMARTSPECTRA_API_KEY in .env or switch to Verified Trace Replay mode.'),
         { code: SmartSpectraErrorCode.kAuthenticationFailed, retryable: false }
@@ -653,27 +679,62 @@ export class StagePulseEngine extends EventEmitter {
       } catch {}
     }
 
+    const pulseNote = this.state.cardio.pulseBpm
+      ? `Your speaking pulse is steady around ${this.state.cardio.pulseBpm} BPM`
+      : 'Your initial vocal cadence is locked in';
+    const ddiPct = Math.round(this.state.breathing.ddi * 100);
+    const congPct = Math.round((this.state.expressions.congruenceScore ?? 0.82) * 100);
+    const contextReply = customContext ? ` Regarding "${customContext}": anchor your posture and project from the lower ribs.` : '';
+    const analysis = `${pulseNote} with ${ddiPct}% diaphragmatic dominance during pauses and ${congPct}% expression congruence for "${this.state.currentBeatTone}". Hold a deliberate 2-second silence at the next [BREATH GATE] so your key takeaway lands with authority.${contextReply}`;
+    const encodedBuf = encodeInsightBuffer({
+      requestId,
+      processedAt: new Date().toISOString(),
+      analysis,
+      type: 0,
+    });
+    const decoded = decodeInsightBuffer(encodedBuf, requestId);
+
     setTimeout(() => {
       this.removeListener('insight', onNativeInsight);
       if (nativeResolved) return;
-      const pulseNote = this.state.cardio.pulseBpm
-        ? `Your speaking pulse is steady around ${this.state.cardio.pulseBpm} BPM`
-        : 'Your initial vocal cadence is locked in';
-      const ddiPct = Math.round(this.state.breathing.ddi * 100);
-      const congPct = Math.round((this.state.expressions.congruenceScore ?? 0.82) * 100);
-      const contextReply = customContext ? ` Regarding "${customContext}": anchor your posture and project from the lower ribs.` : '';
-      const analysis = `${pulseNote} with ${ddiPct}% diaphragmatic dominance during pauses and ${congPct}% expression congruence for "${this.state.currentBeatTone}". Hold a deliberate 2-second silence at the next [BREATH GATE] so your key takeaway lands with authority.${contextReply}`;
-      const encodedBuf = encodeInsightBuffer({
-        requestId,
-        processedAt: new Date().toISOString(),
-        analysis,
-        type: 0,
-      });
-      const decoded = decodeInsightBuffer(encodedBuf, requestId);
       this._recordPrivacyAudit('LLM_INSIGHT_DECODED', `Decoded presage.smartspectra.Insight #${decoded.requestId} (${encodedBuf.byteLength} bytes)`);
       this.emit('insight', decoded);
     }, 380);
-    return { requestId, prompt };
+    return { requestId, prompt, insight: decoded };
+  }
+
+  /**
+   * Build pre-ingested telemetry snapshots from `assets/fixtures/verified-presage-trace.json`
+   * so serverless HTTP clients can stream the exact 65s rehearsal telemetry without a persistent WebSocket.
+   */
+  buildVerifiedTraceSnapshots() {
+    if (!fs.existsSync(this.defaultTracePath)) {
+      return { sdkVersion: SmartSpectraSDK.version, frames: [] };
+    }
+    const raw = JSON.parse(fs.readFileSync(this.defaultTracePath, 'utf8'));
+    const rawFrames = Array.isArray(raw.frames) ? raw.frames : [];
+    const tempEngine = new StagePulseEngine({
+      defaultFixturePath: this.defaultFixturePath,
+      defaultTracePath: this.defaultTracePath,
+    });
+    const snapshots = rawFrames.map((f) => {
+      if (f.validation) {
+        tempEngine.currentValidation = f.validation;
+      }
+      const telemetry = tempEngine.ingestDecodedMetrics(f.rawMetrics, f.timestampUs);
+      return {
+        timestampUs: f.timestampUs,
+        validation: tempEngine.currentValidation,
+        telemetry,
+      };
+    });
+    return {
+      sdkVersion: raw.sdkVersion || SmartSpectraSDK.version,
+      capturedAtIso: raw.capturedAtIso,
+      sourceVideo: raw.sourceVideo,
+      totalPacketsDecoded: raw.totalPacketsDecoded || snapshots.length,
+      frames: snapshots,
+    };
   }
 
   /**

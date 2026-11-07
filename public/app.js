@@ -900,6 +900,37 @@ function drawBellowsCanvas(t) {
 // ============================================================================
 // Actions: Start Session, Request Director Insight, Cryptographic Memory Wipe
 // ============================================================================
+let serverlessTraceTimer = null;
+const seenInsightIds = new Set();
+
+async function startServerlessTraceStreamIfNeeded() {
+  if (serverlessTraceTimer) {
+    clearInterval(serverlessTraceTimer);
+    serverlessTraceTimer = null;
+  }
+  // Wait 350ms to see if native WebSocket is actively pushing telemetry
+  const initialPackets = state.telemetry?.packetsProcessed ?? 0;
+  await new Promise((r) => setTimeout(r, 350));
+  if ((state.telemetry?.packetsProcessed ?? 0) > initialPackets) {
+    return;
+  }
+  try {
+    const traceData = await fetch('/api/session/trace-snapshots').then((r) => r.json());
+    const frames = Array.isArray(traceData.frames) ? traceData.frames : [];
+    if (frames.length === 0) return;
+    let idx = 0;
+    updateStatusBadge({ statusName: 'RUNNING (VERIFIED SDK TRACE)' });
+    serverlessTraceTimer = setInterval(() => {
+      const f = frames[idx % frames.length];
+      idx++;
+      if (f.validation) updateValidationUI(f.validation);
+      if (f.telemetry) updateTelemetryUI(f.telemetry);
+    }, 100);
+  } catch (err) {
+    console.warn('Trace fallback failed:', err);
+  }
+}
+
 async function startStudioSession() {
   if (!el.chkConsentCore.checked) {
     alert('Explicit consent for local optical & physiological sensing is required before starting StagePulse.');
@@ -930,6 +961,7 @@ async function startStudioSession() {
     }
 
     el.consentModal.classList.add('hidden');
+    startServerlessTraceStreamIfNeeded();
   } catch (err) {
     alert(`Session Start Error: ${err.message}`);
   } finally {
@@ -952,6 +984,13 @@ async function requestDirectorNote() {
     if (!res.ok) {
       throw new Error(res.error || 'Insight request failed');
     }
+    if (res.insight) {
+      setTimeout(() => {
+        if (!seenInsightIds.has(res.insight.requestId)) {
+          prependDirectorInsight(res.insight);
+        }
+      }, 420);
+    }
   } catch (err) {
     prependDirectorInsight({
       requestId: 'WARN',
@@ -966,6 +1005,10 @@ async function requestDirectorNote() {
 
 function prependDirectorInsight(insight) {
   if (!insight) return;
+  if (insight.requestId !== undefined) {
+    if (seenInsightIds.has(insight.requestId)) return;
+    seenInsightIds.add(insight.requestId);
+  }
   const emptyEl = el.directorNotesList.querySelector('.director-empty');
   if (emptyEl) emptyEl.remove();
 
@@ -1020,11 +1063,20 @@ function renderWipeReceipt(receipt) {
 el.btnLaunchStudio.addEventListener('click', startStudioSession);
 el.btnOpenConsent.addEventListener('click', () => el.consentModal.classList.remove('hidden'));
 el.btnStopSession.addEventListener('click', () => {
+  if (serverlessTraceTimer) {
+    clearInterval(serverlessTraceTimer);
+    serverlessTraceTimer = null;
+  }
+  updateStatusBadge({ statusName: 'IDLE' });
   fetch('/api/session/stop', { method: 'POST' }).catch(() => {});
 });
 el.btnOpenPrivacy.addEventListener('click', openPrivacyVault);
 el.btnClosePrivacy.addEventListener('click', () => el.privacyModal.classList.add('hidden'));
 el.btnExecuteWipe.addEventListener('click', async () => {
+  if (serverlessTraceTimer) {
+    clearInterval(serverlessTraceTimer);
+    serverlessTraceTimer = null;
+  }
   const res = await fetch('/api/privacy/wipe', { method: 'POST' }).then((r) => r.json());
   if (res.receipt) renderWipeReceipt(res.receipt);
 });

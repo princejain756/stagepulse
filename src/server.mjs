@@ -8,9 +8,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { SmartSpectraSDK } from '@smartspectra/node-sdk';
 import { StagePulseEngine } from './spectra-engine.mjs';
 import { REHEARSAL_SCRIPTS, CURVEBALL_QUESTIONS } from '../assets/scripts/rehearsal-scripts.mjs';
+
+const SDK_VERSION = '3.4.0';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -96,7 +97,7 @@ export function createStagePulseServer(options = {}) {
     });
   }
 
-  const server = http.createServer(async (req, res) => {
+  const handleRequest = async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
     try {
@@ -107,7 +108,7 @@ export function createStagePulseServer(options = {}) {
           ok: true,
           app: 'StagePulse',
           sdkPackage: '@smartspectra/node-sdk',
-          sdkVersion: SmartSpectraSDK.version,
+          sdkVersion: SDK_VERSION,
           apiKeyConfigured: Boolean(engine.apiKey),
           hasVerifiedTrace,
           hasFixtureVideo,
@@ -120,6 +121,10 @@ export function createStagePulseServer(options = {}) {
           scripts: REHEARSAL_SCRIPTS,
           curveballs: CURVEBALL_QUESTIONS,
         });
+      }
+
+      if (req.method === 'GET' && url.pathname === '/api/session/trace-snapshots') {
+        return sendJson(res, 200, engine.buildVerifiedTraceSnapshots());
       }
 
       if ((req.method === 'GET' || req.method === 'POST') && url.pathname === '/api/cameras') {
@@ -214,7 +219,9 @@ export function createStagePulseServer(options = {}) {
     } catch (err) {
       sendJson(res, 400, { error: err.message || 'Request failed', code: err.code });
     }
-  });
+  };
+
+  const server = http.createServer(handleRequest);
 
   server.on('upgrade', (request, socket, head) => {
     const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
@@ -224,7 +231,7 @@ export function createStagePulseServer(options = {}) {
         ws.send(JSON.stringify({
           type: 'welcome',
           data: {
-            sdkVersion: SmartSpectraSDK.version,
+            sdkVersion: SDK_VERSION,
             apiKeyConfigured: Boolean(engine.apiKey),
             validation: engine.currentValidation,
             privacyAuditLog: engine.privacyAuditLog.slice(-10),
@@ -254,18 +261,21 @@ export function createStagePulseServer(options = {}) {
     await new Promise((resolve) => server.close(() => resolve()));
   };
 
-  return { server, engine, wss, listen, close };
+  return { server, engine, wss, listen, close, handleRequest };
 }
+
+const defaultStudioInstance = createStagePulseServer();
+export default defaultStudioInstance.handleRequest;
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 4321);
-  const { server, engine } = createStagePulseServer();
+  const { server } = defaultStudioInstance;
   server.listen(port, '127.0.0.1', () => {
     console.log(`StagePulse Studio running at http://localhost:${port}`);
-    console.log(`Presage @smartspectra/node-sdk v${SmartSpectraSDK.version} ready.`);
+    console.log(`Presage @smartspectra/node-sdk v${SDK_VERSION} ready.`);
   });
   process.on('SIGINT', async () => {
-    await engine.stopSession();
+    await defaultStudioInstance.engine.stopSession();
     process.exit(0);
   });
 }
