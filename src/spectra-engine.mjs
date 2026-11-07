@@ -24,6 +24,7 @@ import {
 const require = createRequire(import.meta.url);
 let sdkPkg;
 try {
+  if (process.env.VERCEL) throw new Error('Use serverless trace mode on Vercel Lambda');
   sdkPkg = require('@smartspectra/node-sdk');
 } catch {
   sdkPkg = {
