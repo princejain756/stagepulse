@@ -1,16 +1,7 @@
 {
   "functions": {
-    "api/*.mjs": {
-      "includeFiles": "assets/**"
-    },
-    "src/*.mjs": {
-      "includeFiles": "assets/**"
+    "src/server.mjs": {
+      "includeFiles": "{assets/**,public/**}"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.mjs"
-    }
-  ]
+  }
 }
