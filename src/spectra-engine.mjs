@@ -26,11 +26,31 @@ let sdkPkg;
 try {
   sdkPkg = require('@smartspectra/node-sdk');
 } catch {
-  const constants = require('@smartspectra/node-sdk/js/constants');
-  const camSel = require('@smartspectra/node-sdk/js/camera-selection');
   sdkPkg = {
-    ...constants,
-    ...camSel,
+    ProcessingStatus: { kUninitialized: 0, kIdle: 1, kStarting: 2, kRunning: 3, kStopping: 4, kError: 5 },
+    SmartSpectraLogLevel: { kDebug: 0, kInfo: 1, kWarning: 2, kError: 3, kNone: 4 },
+    PixelFormat: { kRGB: 0, kBGR: 1, kRGBA: 2, kBGRA: 3, kNV12: 4, kNV21: 5, kYUYV: 6 },
+    ValidationCode: {
+      kOk: 0, kNoFaceFound: 1, kMultipleFacesFound: 2, kFaceNotCentered: 3, kFaceSizeOutOfRange: 4,
+      kTooDark: 5, kTooBright: 6, kChestNotVisible: 7, kCameraTuning: 10, kFrameRateTooLow: 11,
+      kExcessiveMotion: 12, kFaceTooClose: 13, kFaceTooFar: 14, kFaceTooHigh: 15, kFaceTooLow: 16, kFaceNotForward: 17,
+    },
+    SmartSpectraErrorCode: {
+      kOk: 0, kInvalidState: 1, kAuthenticationFailed: 2, kConfigurationFailed: 3, kCreditExhausted: 4,
+      kNetworkError: 5, kServerError: 6, kInputUnavailable: 7, kProcessingFailed: 8,
+    },
+    FrameTransform: { kNone: 0, kRotate90CW: 1, kRotate90CCW: 2, kRotate180: 3, kMirrorHorizontal: 4, kMirrorVertical: 5 },
+    CameraSelection: {
+      default: { kind: 'default' },
+      front: { kind: 'front' },
+      back: { kind: 'back' },
+      byId: (id) => ({ kind: 'byId', id }),
+    },
+    MetricType: {},
+    breathingMetrics: [0, 1, 2, 3, 4, 5, 6, 7],
+    cardioMetrics: [15, 16, 17],
+    faceMetrics: [11, 12, 13, 14],
+    edaMetrics: [10],
     SmartSpectraSDK: class ServerlessSmartSpectraFallback {
       static get version() { return '3.4.0'; }
       static availableCameras() {
