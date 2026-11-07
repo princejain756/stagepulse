@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StagePulse | Consent-First Bio-Adaptive Teleprompter &amp; Living Auditorium</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="keylight-normal">
+  <!-- Dynamic Optical Key-Light Bezel (adapts to ValidationCode kTooDark / kTooBright / kLightingTooUneven) -->
+  <div id="keylight-ring" class="keylight-ring" aria-hidden="true"></div>
+
+  <!-- Pre-Hardware Explicit Consent Gate Modal -->
+  <div id="consent-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+    <div class="consent-card">
+      <div class="consent-header">
+        <div class="consent-brand-row">
+          <img src="/assets/stagepulse-emblem.png" class="brand-emblem-lg" alt="StagePulse Emblem" onerror="this.style.display='none'" />
+          <div>
+            <div class="brand-badge">
+              <span class="pulse-dot"></span>
+              <span>PRESAGE SMARTSPECTRA SDK v3.4.0</span>
+            </div>
+            <h1 id="consent-title">StagePulse Broadcast Greenroom &amp; Consent Gate</h1>
+          </div>
+        </div>
+        <p class="consent-lead">
+          StagePulse is a bio-adaptive teleprompter, vocal presence studio, and reactive auditorium.
+          Before any camera or video stream initializes, choose exactly how your optical and physiological signals are handled.
+        </p>
+      </div>
+
+      <div class="consent-grid">
+        <label class="consent-option">
+          <input type="checkbox" id="chk-consent-core" checked />
+          <div class="consent-option-body">
+            <div class="consent-option-title">
+              <span>1. Local Physiological &amp; Optical Sensing</span>
+              <span class="pill pill-required">Required to Start</span>
+            </div>
+            <p>
+              Authorizes local processing of facial landmarks (478 points), talking/blink detection, pulse rate (rPPG),
+              arterial waveform, respiratory motion, and electrodermal activity in a volatile 32 KB RAM ring buffer.
+            </p>
+          </div>
+        </label>
+
+        <label class="consent-option">
+          <input type="checkbox" id="chk-wireframe-cloak" checked />
+          <div class="consent-option-body">
+            <div class="consent-option-title">
+              <span>2. Privacy Wireframe Cloak (Suppress Raw Video)</span>
+              <span class="pill pill-emerald">Default ON</span>
+            </div>
+            <p>
+              Suppresses raw RGB camera frames (<code>videoOutput</code>) from the UI and renders only a normalized 52-point geometric wireframe mesh. Zero video frames are ever written to disk.
+            </p>
+          </div>
+        </label>
+
+        <label class="consent-option">
+          <input type="checkbox" id="chk-sdk-telemetry" />
+          <div class="consent-option-body">
+            <div class="consent-option-title">
+              <span>3. Presage SDK Aggregate Session Telemetry (<code>enableTelemetry</code>)</span>
+              <span class="pill pill-amber">Default OFF (Opt-Out)</span>
+            </div>
+            <p>
+              When unchecked, StagePulse passes <code>enableTelemetry: false</code> to <code>new SmartSpectraSDK()</code> so aggregate post-session telemetry is not transmitted when the session stops.
+            </p>
+          </div>
+        </label>
+
+        <label class="consent-option">
+          <input type="checkbox" id="chk-llm-insights" checked />
+          <div class="consent-option-body">
+            <div class="consent-option-title">
+              <span>4. Presage LLM Stage Director Notes (<code>sdk.requestInsight</code>)</span>
+              <span class="pill pill-cyan">Explicit Opt-In</span>
+            </div>
+            <p>
+              Allows on-demand calls to <code>sdk.requestInsight({ context })</code> to generate natural-language stage coaching from your accumulated rehearsal metrics.
+            </p>
+          </div>
+        </label>
+      </div>
+
+      <div class="consent-source-row">
+        <div class="source-field">
+          <label for="select-session-mode">Signal Input Pipeline</label>
+          <select id="select-session-mode">
+            <option value="file" selected>Live Presage SDK Engine (useFile: 65s Speaker Rehearsal MP4)</option>
+            <option value="replay">Verified Presage SDK Trace Replay (Zero API Credits / Instant)</option>
+            <option value="camera">Live Hardware Camera (useCamera via SmartSpectraSDK)</option>
+          </select>
+        </div>
+        <div class="source-field" id="camera-select-wrap">
+          <label for="select-camera-device">Discovered Hardware Camera (<code>availableCameras()</code>)</label>
+          <select id="select-camera-device">
+            <option value="default">Scanning cameras...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="medical-disclaimer">
+        <strong>Ergonomic Rehearsal Notice (Non-Medical):</strong>
+        StagePulse is a communication, vocal pacing, and stagecraft training instrument. Physiological metrics (pulse, respiratory trace, HRV, and EDA) are used strictly for ergonomic feedback and reactive stage visualization, never for medical diagnosis, clinical monitoring, or treatment.
+      </div>
+
+      <div class="consent-actions">
+        <button id="btn-launch-studio" class="btn btn-primary btn-lg">
+          Confirm Consent &amp; Enter StagePulse Studio
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Audit & Cryptographic Wipe Receipt Drawer -->
+  <div id="privacy-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+    <div class="consent-card privacy-card">
+      <div class="consent-header">
+        <div class="brand-badge">
+          <span class="pulse-dot"></span>
+          <span>VOLATILE MEMORY &amp; CONSENT VAULT</span>
+        </div>
+        <h2 id="privacy-title">Cryptographic Ring-Buffer &amp; Privacy Audit Log</h2>
+        <p class="consent-lead">
+          All biometric samples live inside a fixed 4,096-slot <code>Float64Array</code> (32,768 bytes) in Node.js RAM.
+          Triggering a cryptographic wipe overwrites every byte with CSPRNG noise via <code>crypto.randomFillSync()</code> before zeroing.
+        </p>
+      </div>
+
+      <div id="wipe-receipt-box" class="wipe-receipt hidden"></div>
+
+      <div class="audit-log-container">
+        <div class="audit-log-header">
+          <span>TIMESTAMP</span>
+          <span>ACTION</span>
+          <span>VERIFIED DETAILS</span>
+        </div>
+        <div id="audit-log-list" class="audit-log-list"></div>
+      </div>
+
+      <div class="consent-actions">
+        <button id="btn-execute-wipe" class="btn btn-danger">
+          Execute CSPRNG 32 KB Memory Wipe Now
+        </button>
+        <button id="btn-close-privacy" class="btn btn-ghost">
+          Close Vault
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EYE-LINE TELEPROMPTER DECK (Pinned within 3 degrees of top bezel webcam) -->
+  <header id="eyeline-teleprompter" class="eyeline-deck">
+    <div class="eyeline-top-strip">
+      <div class="eyeline-left">
+        <div class="studio-logo">
+          <img src="/assets/stagepulse-emblem.png" class="brand-emblem-sm" alt="" onerror="this.style.display='none'" />
+          <span class="logo-mark"></span>
+          <span class="logo-text">STAGE<strong>PULSE</strong></span>
+          <span id="sdk-status-badge" class="pill pill-idle">STANDBY</span>
+        </div>
+        <div class="script-controls">
+          <select id="select-script" aria-label="Select Rehearsal Script"></select>
+          <div id="beat-pills" class="beat-pills" role="tablist" aria-label="Script Beats"></div>
+        </div>
+      </div>
+
+      <div class="eyeline-center-lens">
+        <div class="lens-reticle" id="lens-reticle" title="Eye-Line Target: Keep gaze within 12 degrees of webcam lens">
+          <span class="lens-ring"></span>
+          <span id="eyeline-status-text">EYE-LINE LOCK READY</span>
+        </div>
+      </div>
+
+      <div class="eyeline-right">
+        <button id="btn-open-consent" class="btn btn-sm btn-ghost" title="Change Input Mode or Consent Settings">
+          Source &amp; Consent
+        </button>
+        <button id="btn-stop-session" class="btn btn-sm btn-ghost">
+          Pause / Stop
+        </button>
+        <button id="btn-open-privacy" class="btn btn-sm btn-danger-outline" title="Inspect Volatile Buffer &amp; Cryptographic Wipe">
+          32KB Wipe Vault
+        </button>
+      </div>
+    </div>
+
+    <!-- Kinetic Bio-Clutch Teleprompter Viewport -->
+    <div class="prompter-viewport" id="prompter-viewport">
+      <div class="prompter-meta-bar">
+        <div class="prompter-beat-info">
+          <span class="meta-label">ACTIVE BEAT</span>
+          <strong id="prompter-beat-title">Beat 1: The Hook</strong>
+          <span class="meta-divider">|</span>
+          <span class="meta-label">TARGET INTENT</span>
+          <span id="prompter-target-intent" class="pill pill-intent">confident-warmth</span>
+          <span class="meta-divider">|</span>
+          <span class="meta-label">STAGE CUE</span>
+          <span id="prompter-stage-cue" class="stage-cue-text">Lock gaze on lens; let the pause breathe.</span>
+        </div>
+
+        <div class="bioclutch-hud">
+          <div id="bioclutch-badge" class="pill pill-clutch">BIO-CLUTCH: HOLDING</div>
+          <div class="clutch-metric">
+            <span>SPEED</span>
+            <strong id="clutch-speed-val">0.00x</strong>
+          </div>
+          <div class="clutch-metric">
+            <span>CARDIO BRAKE</span>
+            <strong id="clutch-damping-val">1.00x</strong>
+          </div>
+          <div class="clutch-metric">
+            <span>CONGRUENCE</span>
+            <strong id="congruence-score-val">82%</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Curveball Q&A Interruption Banner -->
+      <div id="curveball-banner" class="curveball-banner hidden">
+        <div class="curveball-tag">LIVE SKEPTIC INTERRUPTION</div>
+        <div id="curveball-question-text" class="curveball-question"></div>
+        <div class="curveball-recovery">
+          <span>Breathe from the diaphragm before answering</span>
+          <button id="btn-dismiss-curveball" class="btn btn-xs btn-ghost">Clear Interruption</button>
+        </div>
+      </div>
+
+      <!-- Scrolling Script Lines -->
+      <div id="prompter-scroll-box" class="prompter-scroll-box">
+        <div id="prompter-text-track" class="prompter-text-track"></div>
+      </div>
+
+      <!-- Arterial Horizon Waveform Ribbon (cardio.arterialPressureTrace directly under active reading line) -->
+      <div class="arterial-horizon-bar">
+        <div class="arterial-label">
+          <span>ARTERIAL HORIZON (<code>cardio.arterialPressureTrace</code>)</span>
+          <span id="arterial-bpm-inline">Warming rPPG...</span>
+        </div>
+        <canvas id="arterial-canvas" width="1200" height="36"></canvas>
+      </div>
+    </div>
+  </header>
+
+  <!-- 5-ACT PROGRESSIVE WARM-UP TIMELINE RIBBON -->
+  <section class="acts-ribbon" aria-label="SmartSpectra 5-Act Progressive Warm-Up">
+    <div class="act-step active" id="act-step-1" data-act="1">
+      <span class="act-time">0s</span>
+      <div class="act-copy">
+        <strong>Act I: Optical Lock</strong>
+        <span>478 Face Mesh, Talking, Blinks, 8 Expressions</span>
+      </div>
+    </div>
+    <div class="act-step" id="act-step-2" data-act="2">
+      <span class="act-time">12s</span>
+      <div class="act-copy">
+        <strong>Act II: Cardio rPPG</strong>
+        <span>Pulse Rate (BPM) &amp; Arterial Pressure Trace</span>
+      </div>
+    </div>
+    <div class="act-step" id="act-step-3" data-act="3">
+      <span class="act-time">30s</span>
+      <div class="act-copy">
+        <strong>Act III: Breath Multiplexer</strong>
+        <span>Upper vs Lower Bellows (DDI), Ratio &amp; Apnea</span>
+      </div>
+    </div>
+    <div class="act-step" id="act-step-4" data-act="4">
+      <span class="act-time">35s</span>
+      <div class="act-copy">
+        <strong>Act IV: Sympathetic EDA</strong>
+        <span>Electrodermal Phasic Arousal &amp; Drift</span>
+      </div>
+    </div>
+    <div class="act-step" id="act-step-5" data-act="5">
+      <span class="act-time">60s</span>
+      <div class="act-copy">
+        <strong>Act V: Autonomic HRV</strong>
+        <span>RMSSD, SDNN, Baevsky Stress &amp; Presence Matrix</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN BROADCAST STUDIO WORKSPACE -->
+  <main class="studio-grid">
+    <!-- LEFT COLUMN: THE LIVING AUDITORIUM & CURVEBALL Q&A -->
+    <section class="panel auditorium-panel">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">REACTIVE STAGE ENVIRONMENT</span>
+          <h2>The Living Auditorium</h2>
+        </div>
+        <div class="auditorium-badges">
+          <span id="room-shift-badge" class="pill pill-ghost">SPOTLIGHT: WIDE PROSCENIUM</span>
+          <span id="presence-quadrant-badge" class="pill pill-emerald">WARMING UP</span>
+        </div>
+      </div>
+
+      <div class="auditorium-canvas-wrap">
+        <canvas id="auditorium-canvas" width="760" height="340"></canvas>
+        <div class="auditorium-overlay-hud">
+          <div class="hud-chip">
+            <span>VOICE MULTIPLEXER</span>
+            <strong id="hud-talking-state">SILENT (PAUSE)</strong>
+          </div>
+          <div class="hud-chip">
+            <span>SILENCE POWER HOLD</span>
+            <strong id="hud-silence-sec">0.0s</strong>
+          </div>
+          <div class="hud-chip">
+            <span>DOMINANT EXPRESSION</span>
+            <strong id="hud-dominant-expr">neutral</strong>
+          </div>
+          <div class="hud-chip">
+            <span>JAW APERTURE</span>
+            <strong id="hud-jaw-aperture">0%</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Curveball Q&A Stress-Test Deck + Expression Congruence Bars -->
+      <div class="auditorium-subgrid">
+        <div class="subcard">
+          <div class="subcard-header">
+            <strong>Curveball Q&amp;A Stress Injector</strong>
+            <span class="subcard-hint">Test autonomic composure under sudden skepticism</span>
+          </div>
+          <div id="curveball-buttons" class="curveball-btn-list"></div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-header">
+            <strong>8-Class Expression Congruence (<code>face.expression</code>)</strong>
+            <span id="expr-match-label" class="subcard-hint">Cosine match: 82%</span>
+          </div>
+          <div id="expression-bars" class="expression-bars"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: GREENROOM WIREFRAME, SPEECH-PAUSE BELLOWS, CARDIO/HRV & LLM DIRECTOR -->
+    <section class="telemetry-column">
+      <!-- Row 1: Greenroom 52-Point Wireframe Monitor + Speech-Pause Respiratory Bellows -->
+      <div class="telemetry-row-two">
+        <!-- Greenroom Optical & Validation Coach -->
+        <div class="panel greenroom-panel">
+          <div class="panel-header">
+            <div>
+              <span class="panel-kicker">GREENROOM MONITOR</span>
+              <h3>Privacy Wireframe &amp; Optical Coach</h3>
+            </div>
+            <span id="validation-badge" class="pill pill-emerald">0: OPTICAL LOCK READY</span>
+          </div>
+
+          <div class="wireframe-stage">
+            <canvas id="wireframe-canvas" width="320" height="220"></canvas>
+            <img id="raw-video-preview" class="raw-video-preview hidden" alt="Live camera feed" />
+            <div class="wireframe-corner-stats">
+              <div><span>YAW / PITCH</span> <strong id="stat-gaze-angles">0.0° / 0.0°</strong></div>
+              <div><span>POSTURE</span> <strong id="stat-posture-score">100/100</strong></div>
+              <div><span>BLINK RATE</span> <strong id="stat-blink-rate">14 /m</strong></div>
+            </div>
+          </div>
+
+          <div id="validation-coach-box" class="validation-coach-box">
+            <strong id="validation-title">OPTICAL LOCK READY</strong>
+            <p id="validation-direction">Framing and illumination verified. Ready for stage calibration.</p>
+          </div>
+        </div>
+
+        <!-- Speech-Pause Respiratory Multiplexer & Dual-Chamber Diaphragm Bellows -->
+        <div class="panel respiratory-panel">
+          <div class="panel-header">
+            <div>
+              <span class="panel-kicker">PRESAGE MODEL-CARD AWARE</span>
+              <h3>Speech-Pause Respiratory Bellows</h3>
+            </div>
+            <span id="multiplexer-badge" class="pill pill-cyan">REFILL UNLOCKED</span>
+          </div>
+
+          <p class="model-card-note" id="multiplexer-explanation">
+            Per Presage Breathing Model Card: respiratory waveforms are gated during active speech (<code>face.talking = true</code>) and unlocked during pauses to measure diaphragmatic refill.
+          </p>
+
+          <div class="bellows-canvas-wrap">
+            <canvas id="bellows-canvas" width="340" height="145"></canvas>
+          </div>
+
+          <div class="metric-mini-grid">
+            <div class="mini-stat">
+              <span>DIAPHRAGM (DDI)</span>
+              <strong id="stat-ddi">50%</strong>
+              <small id="stat-breath-style">Balanced</small>
+            </div>
+            <div class="mini-stat">
+              <span>BREATH RATE</span>
+              <strong id="stat-breath-rate">-- br/m</strong>
+              <small id="stat-breath-conf">Conf: --%</small>
+            </div>
+            <div class="mini-stat">
+              <span>INHALE:EXHALE</span>
+              <strong id="stat-ie-ratio">--</strong>
+              <small id="stat-apnea-flag">Apnea: No</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Autonomic Cardio + HRV + EDA & Presage LLM Stage Director -->
+      <div class="telemetry-row-two">
+        <!-- Autonomic Vitals & Stage Presence Matrix -->
+        <div class="panel autonomic-panel">
+          <div class="panel-header">
+            <div>
+              <span class="panel-kicker">CARDIO + EDA + HRV (60s)</span>
+              <h3>Autonomic Poise &amp; Presence Matrix</h3>
+            </div>
+            <span id="pulse-conf-badge" class="pill pill-ghost">rPPG Conf: --%</span>
+          </div>
+
+          <div class="vitals-hero-row">
+            <div class="vital-box">
+              <span class="vital-label">PULSE RATE (<code>cardio.pulseRate</code>)</span>
+              <div class="vital-number"><strong id="stat-pulse-bpm">--</strong> <small>BPM</small></div>
+            </div>
+            <div class="vital-box">
+              <span class="vital-label">HRV RMSSD / SDNN (<code>cardio.hrv</code>)</span>
+              <div class="vital-number"><strong id="stat-hrv-rmssd">--</strong> <small>ms</small></div>
+            </div>
+            <div class="vital-box">
+              <span class="vital-label">EDA DRIFT (<code>eda.trace</code>)</span>
+              <div class="vital-number"><strong id="stat-eda-val">--</strong> <small id="stat-eda-label">steady</small></div>
+            </div>
+          </div>
+
+          <div class="presence-card" id="presence-card">
+            <div class="presence-header">
+              <span class="presence-kicker">STAGE PRESENCE QUADRANT</span>
+              <strong id="presence-title">WARMING UP</strong>
+            </div>
+            <p id="presence-coaching">
+              Acquiring cardiovascular and facial baseline. Begin speaking naturally when ready.
+            </p>
+            <div class="presence-submetrics">
+              <span>Baevsky Stress: <strong id="stat-baevsky">--</strong></span>
+              <span>Session Packets: <strong id="stat-packets">0</strong></span>
+              <span>Buffer Usage: <strong id="stat-buffer-bytes">32,768 B</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Presage LLM Stage Director (sdk.requestInsight) -->
+        <div class="panel director-panel">
+          <div class="panel-header">
+            <div>
+              <span class="panel-kicker">ON-DEMAND STAGE DIRECTOR</span>
+              <h3>Presage LLM Insights (<code>requestInsight</code>)</h3>
+            </div>
+            <button id="btn-request-insight" class="btn btn-xs btn-primary">
+              Request Director Note
+            </button>
+          </div>
+
+          <div class="director-context-row">
+            <input
+              type="text"
+              id="input-director-context"
+              placeholder="Optional director prompt (e.g. Check my vocal cadence and breathing recovery)"
+            />
+          </div>
+
+          <div id="director-notes-list" class="director-notes-list">
+            <div class="director-empty">
+              Click <strong>Request Director Note</strong> to invoke <code>sdk.requestInsight({ context })</code> and decode the binary <code>presage.smartspectra.Insight</code> protobuf message (coupled with live StagePulse telemetry analysis).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

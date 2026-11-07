@@ -1,0 +1,22 @@
+{
+  "name": "stagepulse",
+  "version": "1.0.0",
+  "description": "StagePulse: Consent-First Bio-Adaptive Teleprompter, Vocal Presence Studio & Reactive Living Auditorium powered by Presage SmartSpectra SDK",
+  "license": "MIT",
+  "author": "Prince Jain <mail@prince.sh>",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs",
+    "verify:sdk": "node src/cli/verify-sdk.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@smartspectra/node-sdk": "^3.4.0",
+    "protobufjs": "^7.6.5",
+    "ws": "^8.18.0"
+  }
+}
